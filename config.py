@@ -62,10 +62,10 @@ CAREERS_FUTURE_SEARCH_EMPLOYMENT_TYPES = [
 # Set to None for no limit
 # -----------------------------------------------------------------------------
 MAX_JOBS_PER_SEARCH = {
-    "linkedin":       20,   # Max new jobs to fetch details for per query
-    "careers_future": 30,   # Careers Future API is faster so can go higher
+    "linkedin":       10,   # Max new jobs to fetch details for per query
+    "careers_future": 10,   # Careers Future API is faster so can go higher
 }
-DEFAULT_MAX_JOBS_PER_SEARCH = 10        # Fallback if source not listed above
+DEFAULT_MAX_JOBS_PER_SEARCH = 3        # Fallback if source not listed above
 
 # -----------------------------------------------------------------------------
 # HTTP request settings
