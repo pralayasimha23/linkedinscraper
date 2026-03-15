@@ -423,13 +423,8 @@ if __name__ == "__main__":
                 jobs = process_linkedin_query(query, config.LINKEDIN_LOCATION, limit=max_jobs)
                 if LOCATION_FILTER:
                     before = len(jobs)
-                    for j in jobs:
-                        loc = (j.get('location') or 'NONE')
-                        allowed = location_allowed(j)
-                        logging.info(f"  [{('PASS' if allowed else 'DROP')}] {j.get('company','?')} | {j.get('job_title','?')} | location='{loc}'")
                     jobs = [j for j in jobs if location_allowed(j)]
-                    max_after_filter = getattr(config, 'LOCATION_FILTER_MAX', 10)
-                    jobs = jobs[:max_after_filter]
+                    jobs = jobs[:getattr(config, 'LOCATION_FILTER_MAX', 10)]
                     logging.info(f"Location filter: {before} → {len(jobs)} job(s)")
                 batch.extend(jobs)
                 logging.info(f"'{query}' → {len(jobs)} job(s)")
