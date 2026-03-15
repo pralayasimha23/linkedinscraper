@@ -101,6 +101,7 @@ def _fetch_linkedin_job_ids(search_query: str, location: str) -> list:
     logging.info(f"LinkedIn Phase 1: scraping job IDs (max_start={max_start})")
 
     while start <= max_start:
+        wt_param = f"&f_WT={config.LINKEDIN_F_WT}" if getattr(config, 'LINKEDIN_F_WT', '') else ""
         target_url = (
             f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
             f"?keywords={search_query.replace(' ', '%20')}"
@@ -108,7 +109,7 @@ def _fetch_linkedin_job_ids(search_query: str, location: str) -> list:
             f"&geoId={config.LINKEDIN_GEO_ID}"
             f"&f_TPR={config.LINKEDIN_JOB_POSTING_DATE}"
             f"&f_JT={config.LINKEDIN_JOB_TYPE}"
-            f"&f_WT={config.LINKEDIN_F_WT}"
+            f"{wt_param}"
             f"&start={start}"
         )
 
@@ -400,6 +401,14 @@ if __name__ == "__main__":
     total_sent = 0
     errors = []
 
+    LOCATION_FILTER = getattr(config, 'LOCATION_FILTER', [])
+
+    def location_allowed(job: dict) -> bool:
+        if not LOCATION_FILTER:
+            return True
+        loc = (job.get('location') or '').lower()
+        return any(f.lower() in loc for f in LOCATION_FILTER)
+
     # ── LinkedIn ──────────────────────────────────────────────────────────────
     if "linkedin" in config.SCRAPING_SOURCES:
         logging.info("=== LinkedIn scraping started ===")
@@ -412,6 +421,10 @@ if __name__ == "__main__":
             logging.info(f"Query: '{query}'")
             try:
                 jobs = process_linkedin_query(query, config.LINKEDIN_LOCATION, limit=max_jobs)
+                if LOCATION_FILTER:
+                    before = len(jobs)
+                    jobs = [j for j in jobs if location_allowed(j)]
+                    logging.info(f"Location filter: {before} → {len(jobs)} job(s)")
                 batch.extend(jobs)
                 logging.info(f"'{query}' → {len(jobs)} job(s)")
             except Exception as e:
