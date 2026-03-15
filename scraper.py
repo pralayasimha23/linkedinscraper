@@ -93,14 +93,18 @@ def _get_careers_future_company_name(job_item: dict) -> str | None:
 # LinkedIn
 # ---------------------------------------------------------------------------
 
-def _fetch_linkedin_job_ids(search_query: str, location: str) -> list:
+def _fetch_linkedin_job_ids(search_query: str, location: str, limit: int = 10) -> list:
     job_ids_list = []
     start = 0
     max_start = config.LINKEDIN_MAX_START
 
-    logging.info(f"LinkedIn Phase 1: scraping job IDs (max_start={max_start})")
+    logging.info(f"LinkedIn Phase 1: scraping job IDs (stop at {limit} IDs)")
 
     while start <= max_start:
+        if len(job_ids_list) >= limit:
+            logging.info(f"Reached {limit} IDs — stopping pagination early.")
+            break
+
         wt_param = f"&f_WT={config.LINKEDIN_F_WT}" if getattr(config, 'LINKEDIN_F_WT', '') else ""
         target_url = (
             f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
@@ -175,7 +179,7 @@ def _fetch_linkedin_job_ids(search_query: str, location: str) -> list:
         start += 10
 
     logging.info(f"LinkedIn Phase 1 done — {len(job_ids_list)} unique job IDs")
-    return job_ids_list
+    return job_ids_list[:limit]
 
 
 def _fetch_linkedin_job_details(job_id: str) -> dict | None:
@@ -261,13 +265,9 @@ def _fetch_linkedin_job_details(job_id: str) -> dict | None:
         return None
 
 
-def process_linkedin_query(search_query: str, location: str, limit: int = None) -> list:
-    job_ids = list(set(_fetch_linkedin_job_ids(search_query, location)))
+def process_linkedin_query(search_query: str, location: str, limit: int = 10) -> list:
+    job_ids = _fetch_linkedin_job_ids(search_query, location, limit=limit)
     logging.info(f"Unique IDs scraped: {len(job_ids)}")
-
-    if limit:
-        job_ids = job_ids[:limit]
-        logging.info(f"Capped to {limit} IDs")
 
     results = []
     for job_id in job_ids:
