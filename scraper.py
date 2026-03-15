@@ -8,7 +8,7 @@ import os
 import config
 import user_agents
 from markdownify import markdownify as md
-from n8n_notifier import send_jobs_to_n8n, send_summary_to_n8n
+
 
 # --- Logging: stdout + file ---
 for h in logging.root.handlers[:]:
@@ -22,6 +22,29 @@ logging.basicConfig(
         logging.FileHandler("scrape.log"),
     ]
 )
+
+N8N_WEBHOOK_URL = os.environ.get("N8N_WEBHOOK_URL", "").strip()
+GITHUB_RUN_ID   = os.environ.get("GITHUB_RUN_ID", "local")
+
+
+def send_to_n8n(jobs: list, source: str) -> None:
+    if not N8N_WEBHOOK_URL:
+        logging.error("[n8n] N8N_WEBHOOK_URL not set — skipping.")
+        return
+    if not jobs:
+        logging.info(f"[n8n] No jobs to send for '{source}'.")
+        return
+    try:
+        resp = requests.post(
+            N8N_WEBHOOK_URL,
+            json={"source": source, "run_id": GITHUB_RUN_ID, "job_count": len(jobs), "jobs": jobs},
+            timeout=30,
+            headers={"Content-Type": "application/json"},
+        )
+        resp.raise_for_status()
+        logging.info(f"[n8n] Sent {len(jobs)} job(s) [{source}] — HTTP {resp.status_code}")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"[n8n] Failed: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +113,7 @@ def _fetch_linkedin_job_ids(search_query: str, location: str) -> list:
         )
 
         if start > 0:
-            time.sleep(random.uniform(5.0, 15.0))
+            time.sleep(random.uniform(2.0, 4.0))
 
         headers = {'User-Agent': random.choice(user_agents.USER_AGENTS)}
         logging.info(f"Scraping: {target_url}")
@@ -156,7 +179,7 @@ def _fetch_linkedin_job_ids(search_query: str, location: str) -> list:
 
 def _fetch_linkedin_job_details(job_id: str) -> dict | None:
     url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
-    time.sleep(random.uniform(3.0, 10.0))
+    time.sleep(random.uniform(1.5, 3.0))
     headers = {'User-Agent': random.choice(user_agents.USER_AGENTS)}
 
     resp = None
@@ -397,7 +420,7 @@ if __name__ == "__main__":
                 errors.append(msg)
 
         if batch:
-            send_jobs_to_n8n(batch, source="linkedin")
+            send_to_n8n(batch, source="linkedin")
             total_sent += len(batch)
         logging.info(f"=== LinkedIn done: {len(batch)} job(s) sent to n8n ===")
 
@@ -421,10 +444,8 @@ if __name__ == "__main__":
                 errors.append(msg)
 
         if batch:
-            send_jobs_to_n8n(batch, source="careers_future")
+            send_to_n8n(batch, source="careers_future")
             total_sent += len(batch)
         logging.info(f"=== Careers Future done: {len(batch)} job(s) sent to n8n ===")
 
-    # ── Summary ───────────────────────────────────────────────────────────────
-    send_summary_to_n8n(total_sent, errors)
     logging.info(f"=== All done. Total jobs sent to n8n: {total_sent} ===")
