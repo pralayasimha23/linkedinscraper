@@ -32,10 +32,12 @@ CAREERS_FUTURE_SEARCH_EMPLOYMENT_TYPES = [
 ]
 
 MAX_JOBS_PER_SEARCH = {
-    "linkedin":       10,
-    "careers_future": 10,
+    "linkedin":       5,
+    "careers_future": 5,
 }
-DEFAULT_MAX_JOBS_PER_SEARCH = 10
+DEFAULT_MAX_JOBS_PER_SEARCH = 5
+
+LOCATION_FILTER = ["hyderabad", "remote"]
 
 REQUEST_TIMEOUT     = 30
 MAX_RETRIES         = 3
